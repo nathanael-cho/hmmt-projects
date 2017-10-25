@@ -1,0 +1,4 @@
+*.pdf
+*.tex
+*.csv
+.DS_Store
