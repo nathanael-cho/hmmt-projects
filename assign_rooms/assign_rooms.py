@@ -307,7 +307,7 @@ if __name__ == '__main__':
         while (not org["gutsbuilding"]):
             room = guts_rooms[guts_room_index]
             if len(org["teams"]) <= room["gutscap"] - room["gutsassigned"]:
-                org["gutsbuilding"] = building
+                org["gutsbuilding"] = room["building"]
                 org["gutsroom"] = room["room"]
                 room["gutsassigned"] += len(org["teams"])
                 break
@@ -328,8 +328,8 @@ if __name__ == '__main__':
     # first pass to assign awards rooms to maximize the number of teams that do not have to switch rooms
     for org in organizations:
         for room in awards_rooms:
-            if org["gutsbuilding"] == building and org["gutsroom"] == room["room"]:
-                org["awardsbuilding"] = building
+            if org["gutsbuilding"] == room["building"] and org["gutsroom"] == room["room"]:
+                org["awardsbuilding"] = room["building"]
                 org["awardsroom"] = room["room"]
                 room["awardsassigned"] += len(org["teams"])
                 break
@@ -340,7 +340,7 @@ if __name__ == '__main__':
             continue
         for room in awards_rooms:
             if len(org["teams"]) <= room["awardscap"] - room["awardsassigned"]:
-                org["awardsbuilding"] = building
+                org["awardsbuilding"] = room["building"]
                 org["awardsroom"] = room["room"]
                 room["awardsassigned"] += len(org["teams"])
                 break
