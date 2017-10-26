@@ -23,14 +23,11 @@ import sys
 # Globals #
 ###########
 
-# stride_limit ensures that the rooms will be slightly mixed up by organization size
-# it should be less than the number of guts rooms total
-# the current iteration is Harvard specific (all guts/awards in the same building): TODO = generalize
-stride_limit = 3
-
 room_assignment_headers = ["orgid", "orgname", "teamid", "teamname", "shortname", "indbuilding", "indroom",
                            "teambuilding", "teamroom", "gutsbuilding", "gutsroom", "awardsbuilding", "awardsroom"]
 
+# in relation to room_assignment_headers: get earlier indices from team objects and
+#   later indices from organization objects
 team_org_split = 9
 
 
@@ -291,61 +288,61 @@ if __name__ == '__main__':
                     room["indassigned"] += 1
                     break
 
+    # collect guts rooms
+    guts_rooms = []
+    for building in buildings:
+        data = buildings[building]
+        if data["gutscap"] > 0:
+            for room in data["rooms"]:
+                if room["gutscap"] > 0:
+                    guts_rooms.append(room)
+    stride_limit = len(guts_rooms)
+
+
     # assign guts rooms
     stride = 0
-    current_walk = 0
     for org in organizations:
-        for building in buildings:
-            data = buildings[building]
-            if data["gutscap"] > 0:
-                for room in data["rooms"]:
-                    if room["gutscap"] == 0:
-                        continue
-                    if stride > 0 and current_walk > 0:
-                        current_walk -= 1
-                        continue
-                    if len(org["teams"]) <= room["gutscap"] - room["gutsassigned"]:
-                        org["gutsbuilding"] = building
-                        org["gutsroom"] = room["room"]
-                        room["gutsassigned"] += len(org["teams"])
-                        break
-                stride = (stride + 1) % stride_limit
-                current_walk = stride
-            if org["gutsroom"]:
+        guts_room_index = stride
+        guts_room_original_index = stride
+        while (not org["gutsbuilding"]):
+            room = guts_rooms[guts_room_index]
+            if len(org["teams"]) <= room["gutscap"] - room["gutsassigned"]:
+                org["gutsbuilding"] = building
+                org["gutsroom"] = room["room"]
+                room["gutsassigned"] += len(org["teams"])
                 break
+            guts_room_index = (guts_room_index + 1) % stride_limit
+            if (guts_room_index == guts_room_original_index):
+                raise RuntimeError("Not able to assign the organization " + org["orgname"])
+        stride = (stride + 1) % stride_limit
+
+    # collect awards rooms
+    awards_rooms = []
+    for building in buildings:
+        data = buildings[building]
+        if data["awardscap"] > 0:
+            for room in data["rooms"]:
+                if room["awardscap"] > 0:
+                    awards_rooms.append(room)
 
     # first pass to assign awards rooms to maximize the number of teams that do not have to switch rooms
     for org in organizations:
-        for building in buildings:
-            data = buildings[building]
-            if data["awardscap"] > 0:
-                for room in data["rooms"]:
-                    if room["awardscap"] == 0:
-                        continue
-                    if org["gutsbuilding"] == building and org["gutsroom"] == room["room"]:
-                        org["awardsbuilding"] = building
-                        org["awardsroom"] = room["room"]
-                        room["awardsassigned"] += len(org["teams"])
-                        break
-            if org["awardsroom"]:
+        for room in awards_rooms:
+            if org["gutsbuilding"] == building and org["gutsroom"] == room["room"]:
+                org["awardsbuilding"] = building
+                org["awardsroom"] = room["room"]
+                room["awardsassigned"] += len(org["teams"])
                 break
 
     # second pass to assign the rest of the awards rooms
     for org in organizations:
         if org["awardsroom"]:
             continue
-        for building in buildings:
-            data = buildings[building]
-            if data["awardscap"] > 0:
-                for room in data["rooms"]:
-                    if room["awardscap"] == 0:
-                        continue
-                    if len(org["teams"]) <= room["awardscap"] - room["awardsassigned"]:
-                        org["awardsbuilding"] = building
-                        org["awardsroom"] = room["room"]
-                        room["awardsassigned"] += len(org["teams"])
-                        break
-            if org["awardsroom"]:
+        for room in awards_rooms:
+            if len(org["teams"]) <= room["awardscap"] - room["awardsassigned"]:
+                org["awardsbuilding"] = building
+                org["awardsroom"] = room["room"]
+                room["awardsassigned"] += len(org["teams"])
                 break
 
     # generate new csv
