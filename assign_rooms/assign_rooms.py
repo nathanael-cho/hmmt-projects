@@ -28,8 +28,10 @@ import sys
 # the current iteration is Harvard specific (all guts/awards in the same building): TODO = generalize
 stride_limit = 3
 
-room_assignment_headers = ["orgname", "teamname", "shortname", "indbuilding", "indroom", "teambuilding",
-                           "teamroom", "gutsbuilding", "gutsroom", "awardsbuilding", "awardsroom"]
+room_assignment_headers = ["orgid", "orgname", "teamid", "teamname", "shortname", "indbuilding", "indroom",
+                           "teambuilding", "teamroom", "gutsbuilding", "gutsroom", "awardsbuilding", "awardsroom"]
+
+team_org_split = 9
 
 
 ############################
@@ -351,7 +353,8 @@ if __name__ == '__main__':
     for org in organizations:
         for team in org["teams"]:
             room_assignment_list.append(
-                [team[x] for x in room_assignment_headers[:7]] + [org[x] for x in room_assignment_headers[7:]]
+                [team[x] for x in room_assignment_headers[:team_org_split]] + \
+                [org[x] for x in room_assignment_headers[team_org_split:]]
             )
 
     with open("room_assignment_output.csv", "w") as file:

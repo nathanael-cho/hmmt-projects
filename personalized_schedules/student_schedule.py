@@ -44,7 +44,7 @@ if len(sys.argv) != 2:
 
 assignment_file = sys.argv[1]
 
-# minimum required columns: [orgname, teamname, shortname, indbuilding, indroom,
+# minimum required columns: [orgid, orgname, teamid, teamname, shortname, indbuilding, indroom,
 #   teambuilding, teamroom, gutsbuilding, gutsroom, awardsbuilding, awardsroom]
 room_assignments_raw = list(csv.reader(open(assignment_file, "r")))
 
@@ -60,6 +60,9 @@ def assignment_objectify(list):
     return assignment_object
 
 room_assignments = [assignment_objectify(x) for x in room_assignments_raw[1:]]
+def assignment_key(assignment):
+    return (assignment["shortname"])
+room_assignments= sorted(room_assignments, key=assignment_key)
 
 ###############
 ## Schedules ##
