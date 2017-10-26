@@ -84,10 +84,17 @@ def grab_csv(type):
 
     if driver.current_url == "http://www.hmmt.co/admin/login/":
         username = driver.find_element_by_id("id_username")
-        username.send_keys("PUT YOUR USERNAME HERE")
+        username.send_keys("YOUR USERNAME HERE")
         password = driver.find_element_by_id("id_password")
-        password.send_keys("PUT YOUR PASSWORD HERE")
+        password.send_keys("YOUR PASSWORD HERE")
         driver.find_element_by_xpath("//input[@type='submit']").click()
+
+        # give the browser some time to load
+        sleep(0.25)
+
+        if driver.current_url == "http://www.hmmt.co/admin/login/":
+            raise RuntimeError("Bad username and/or password.")
+        
 
     if type == "teams":
         driver.get("http://www.hmmt.co/admin/registration/team/export/?accepted__exact=1&month__exact=nov")
