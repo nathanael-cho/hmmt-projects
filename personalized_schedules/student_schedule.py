@@ -44,8 +44,8 @@ if len(sys.argv) != 2:
 
 assignment_file = sys.argv[1]
 
-# minimum required columns: [orgname, teamname, shortname, indbuilding,
-#   indroom, indboth, teambuilding, teamroom, teamboth, guts, awards]
+# minimum required columns: [orgname, teamname, shortname, indbuilding, indroom,
+#   teambuilding, teamroom, gutsbuilding, gutsroom, awardsbuilding, awardsroom]
 room_assignments_raw = list(csv.reader(open(assignment_file, "r")))
 
 categories = room_assignments_raw[0]
@@ -88,23 +88,23 @@ saturday_schedule = [
 ## Data Helper Functions ##
 ###########################
 
-def style_room(room, building="SC", both=None):
+def style_room(room, building):
     if building == "SC":
         return bold_sans_serif("Science Center " + room)
-    return bold_sans_serif(both)
+    return bold_sans_serif(building + " " + room)
 
 def schedule_entry_to_row_entry(entry, assign):
     assert len(entry) == 4
 
     room = None
     if entry[2] == "Individual Round" or entry[2] == "Theme Round":
-        room = style_room(assign["indroom"], assign["indbuilding"], assign["indboth"])
+        room = style_room(assign["indroom"], assign["indbuilding"])
     elif entry[2] == "Team Round":
-        room = style_room(assign["teamroom"], assign["teambuilding"], assign["teamboth"])
+        room = style_room(assign["teamroom"], assign["teambuilding"])
     elif entry[2] == "Guts Round":
-        room = style_room(assign["guts"])
+        room = style_room(assign["gutsroom"], assign["gutsbuilding"])
     elif entry[2] == "Award Ceremony":
-        room = style_room(assign["awards"])
+        room = style_room(assign["awardsroom"], assign["awardsbuilding"])
     else:
         room = entry[3]
 

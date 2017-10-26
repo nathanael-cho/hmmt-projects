@@ -25,7 +25,11 @@ import sys
 
 # stride_limit ensures that the rooms will be slightly mixed up by organization size
 # it should be less than the number of guts rooms total
+# the current iteration is Harvard specific (all guts/awards in the same building): TODO = generalize
 stride_limit = 3
+
+room_assignment_headers = ["orgname", "teamname", "shortname", "indbuilding", "indroom", "teambuilding",
+                           "teamroom", "gutsbuilding", "gutsroom", "awardsbuilding", "awardsroom"]
 
 
 ############################
@@ -133,8 +137,8 @@ def team_list_to_org_list(team_list):
     # add individual team "organization" to the list
     #     we will try to keep the individual teams together
     individual_teams = [
-        {"orgid": None, "orgname": "Individuals", "teamid": None, "teamname": "Individual" + str(x + 1), \
-         "shortname": "Individual" + str(x + 1)} for x in range(individual_team_count)
+        {"orgid": None, "orgname": "Individuals", "teamid": None, "teamname": "Individual " + str(x + 1), \
+         "shortname": "Individual " + str(x + 1)} for x in range(individual_team_count)
     ]
     organizations.append({
         "orgid": None,
@@ -343,23 +347,12 @@ if __name__ == '__main__':
                 break
 
     # generate new csv
-    room_assignment_list = [["orgname", "teamname", "shortname", "indbuilding", "indroom",
-                             "indboth", "teambuilding", "teamroom", "teamboth", "guts", "awards"]]
+    room_assignment_list = [room_assignment_headers]
     for org in organizations:
         for team in org["teams"]:
-            room_assignment_list.append([
-                team["orgname"],
-                team["teamname"],
-                team["shortname"],
-                team["indbuilding"],
-                team["indroom"],
-                team["indbuilding"] + " " + team["indroom"],
-                team["teambuilding"],
-                team["teamroom"],
-                team["teambuilding"] + " " + team["teamroom"],
-                org["gutsroom"],
-                org["awardsroom"]
-            ])
+            room_assignment_list.append(
+                [team[x] for x in room_assignment_headers[:7]] + [org[x] for x in room_assignment_headers[7:]]
+            )
 
     with open("room_assignment_output.csv", "w") as file:
         writer = csv.writer(file)
