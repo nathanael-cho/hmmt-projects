@@ -3,6 +3,7 @@
 ###########
 
 import csv
+import sys
 import os
 from pylatex import Document, NewPage, LineBreak, LongTabu, LargeText, \
     SmallText, MultiColumn, TextColor, Command, Package, MiniPage, Center
@@ -32,17 +33,27 @@ def table_header(table, date):
 # Data #
 ########
 
+# we only pass in a single argument, the assignments csv
+if len(sys.argv) != 2:
+    print("Usage: student_schedule.py [room assignments .csv file]")
+    sys.exit()
+
 #################
 ## Assignments ##
 #################
 
-# expected column headers: [count, orgid, orgnam, teamid, teamname, shortname,
-#   indbuilding, indroom, indboth, teambuilding, teamroom, teamboth, guts, awards]
-room_assignments_raw = list(csv.reader(open("room_assignments.csv", "r")))
+assignment_file = sys.argv[1]
+
+# minimum required columns: [orgname, teamname, shortname, indbuilding,
+#   indroom, indboth, teambuilding, teamroom, teamboth, guts, awards]
+room_assignments_raw = list(csv.reader(open(assignment_file, "r")))
 
 categories = room_assignments_raw[0]
+
 def assignment_objectify(list):
-    assert len(list) == len(categories)
+    if len(categories) != len(list):
+        raise ValueError(assignment_file + " was parsed incorrectly.")
+
     assignment_object = {}
     for index in range(len(categories)):
         assignment_object[categories[index]] = list[index]
