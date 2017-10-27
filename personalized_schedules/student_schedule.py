@@ -33,41 +33,48 @@ def table_header(table, date):
 # Data #
 ########
 
-# we only pass in a single argument, the assignments csv
-if len(sys.argv) != 2:
-    print("Usage: student_schedule.py [room assignments .csv file]")
-    sys.exit()
+################
+## Data Check ##
+################
+
+def check_number_of_arguments():
+    if len(sys.argv) != 2:
+        print("Usage: student_schedule.py [room assignments .csv file]")
+        sys.exit()
 
 #################
 ## Assignments ##
 #################
 
-assignment_file = sys.argv[1]
-
-# minimum required columns: [orgid, orgname, teamid, teamname, shortname, indbuilding, indroom,
-#   teambuilding, teamroom, gutsbuilding, gutsroom, awardsbuilding, awardsroom]
-room_assignments_raw = list(csv.reader(open(assignment_file, "r")))
-
-categories = room_assignments_raw[0]
-
-def assignment_objectify(list):
-    if len(categories) != len(list):
+def assignment_objectify(list, headers):
+    if len(headers) != len(list):
         raise ValueError(assignment_file + " was parsed incorrectly.")
 
     assignment_object = {}
-    for index in range(len(categories)):
-        assignment_object[categories[index]] = list[index]
+    for index in range(len(headers)):
+        assignment_object[headers[index]] = list[index]
     return assignment_object
 
-room_assignments = [assignment_objectify(x) for x in room_assignments_raw[1:]]
 def assignment_key(assignment):
     return (assignment["shortname"])
-room_assignments= sorted(room_assignments, key=assignment_key)
+
+def get_room_assignments():
+    assignment_file = sys.argv[1]
+
+    # minimum required columns: [orgid, orgname, teamid, teamname, shortname, indbuilding, indroom,
+    #   teambuilding, teamroom, gutsbuilding, gutsroom, awardsbuilding, awardsroom]
+    room_assignments_raw = list(csv.reader(open(assignment_file, "r")))
+
+    headers = room_assignments_raw[0]
+    room_assignments = [assignment_objectify(x, headers) for x in room_assignments_raw[1:]]
+
+    return sorted(room_assignments, key=assignment_key)
 
 ###############
 ## Schedules ##
 ###############
 
+# TODO: read in spreadsheet with this data, for generalization
 friday_schedule = [
     ["7:00PM", "8:00PM", "Early Registration", "E51"],
     ["7:00PM", "7:45PM", "Pizza and Ice Cream", "E51"],
@@ -125,6 +132,10 @@ def add_schedule_row(table, entry, assignment, index):
 ########
 
 if __name__ == '__main__':
+    check_number_of_arguments()
+
+    room_assignments = get_room_assignments()
+
     geometry_options = {"margin": "1.25in"}
     doc = Document(geometry_options=geometry_options, indent=False, document_options=['11pt'])
     doc.preamble.append(Command('pagenumbering', arguments=["gobble"]))

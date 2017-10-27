@@ -50,46 +50,38 @@ team_org_split = 9
 # General Helper Functions #
 ############################
 
-def list_objectify(list, categories, file):
-    if len(categories) != len(list):
+def list_objectify(list, headers, file):
+    if len(headers) != len(list):
         raise ValueError(file + " was parsed incorrectly.")
 
     list_object = {}
-    for index in range(len(categories)):
-        list_object[categories[index]] = list[index]
+    for index in range(len(headers)):
+        list_object[headers[index]] = list[index]
     return list_object
 
 
-###################
-# Check Arguments #
-###################
+##################
+# Data Functions #
+##################
 
-# we can pass in two or three arguments: the team csv is optional, and the rooms csv and the
-#   number of individual teams are required
-if len(sys.argv) != 4 and len(sys.argv) != 5:
-    print("Usage 1: assign_rooms.py [rooms .csv file] [month] [number of individual teams]")
-    print("Usage 2: assign_rooms.py [teams .csv file] [rooms .csv file] [month] [number of individual teams]")
-    sys.exit()
+#####################
+## Check Arguments ##
+#####################
 
-if len(sys.argv) == 5:
-    teams_csv_flag = 1
+def check_number_of_arguments():
+    # we can pass in two or three arguments: the team csv is optional, and the rooms csv and the
+    #   number of individual teams are required
+    if len(sys.argv) != 4 and len(sys.argv) != 5:
+        print("Usage 1: assign_rooms.py [rooms .csv file] [month] [number of individual teams]")
+        print("Usage 2: assign_rooms.py [teams .csv file] [rooms .csv file] [month] [number of individual teams]")
+        sys.exit()
 
-
-########
-# Data #
-########
+    if len(sys.argv) == 5:
+        teams_csv_flag = 1
 
 ###########
 ## Rooms ##
 ###########
-
-room_file = sys.argv[2] if teams_csv_flag else sys.argv[1]
-
-# minimum required columns: [building, room, indcap, teamcap, gutscap, awardscap]
-rooms_raw = list(csv.reader(open(room_file, "r")))
-
-room_categories = rooms_raw[0]
-rooms_objectified = [list_objectify(x, room_categories, room_file) for x in rooms_raw[1:]]
 
 def integrate_room(room):
     room["indcap"] = int(room["indcap"])
@@ -98,67 +90,79 @@ def integrate_room(room):
     room["awardscap"] = int(room["awardscap"])
     return room
 
-rooms = [integrate_room(x) for x in rooms_objectified]
+def get_rooms():
+    room_file = sys.argv[2] if teams_csv_flag else sys.argv[1]
+
+    # minimum required columns: [building, room, indcap, teamcap, gutscap, awardscap]
+    rooms_raw = list(csv.reader(open(room_file, "r")))
+
+    room_headers = rooms_raw[0]
+    rooms_objectified = [list_objectify(x, room_headers, room_file) for x in rooms_raw[1:]]
+
+    return [integrate_room(x) for x in rooms_objectified]
 
 ###########
 ## Month ##
 ###########
 
-month = sys.argv[3] if teams_csv_flag else sys.argv[2]
+def get_month():
+    return sys.argv[3] if teams_csv_flag else sys.argv[2]
 
-################################
-## Number of Individual Teams ##
-################################
+###########################
+## Individual Team Count ##
+###########################
 
-individual_team_count = int(sys.argv[4]) if teams_csv_flag else int(sys.argv[3])
+def get_individual_team_count():
+    return int(sys.argv[4]) if teams_csv_flag else int(sys.argv[3])
 
 ###########
 ## Teams ##
 ###########
-
-# build team csv if it was not passed in
-if not teams_csv_flag:
-    # grab data from the website
-    grab_csv("teams", month, user_info.dl_dir, user_info.work_dir, user_info.hmmt_user, user_info.hmmt_pass)
-    grab_csv("orgs", month, user_info.dl_dir, user_info.work_dir, user_info.hmmt_user, user_info.hmmt_pass)
-
-    # collect organizations into an object for building
-    organizations_for_building = {}
-    for organization in list(csv.reader(open(user_info.work_dir + "/orgs.csv", "r")))[1:]:
-        organizations_for_building[organization[0]] = organization[1]
-
-    # build team csv
-    team_list = [["orgid", "orgname", "teamid", "teamname", "shortname"]]
-    for team in list(csv.reader(open(user_info.work_dir + "/teams_"+ month + ".csv", "r")))[1:]:
-        team_list.append([
-            team[4], # organization
-            organizations_for_building[team[4]],
-            team[1], # number
-            team[2], # name
-            team[3], # shortname
-        ])
-
-    with open(user_info.work_dir + "/teams.csv", "w") as file:
-        writer = csv.writer(file)
-        writer.writerows(team_list)
-
-    # cleanup
-    os.remove(user_info.work_dir + "/orgs.csv")
-    os.remove(user_info.work_dir + "/teams_" + month + ".csv")
-
-# minimum required columns: [orgid, orgname, teamid, teamname, shortname]
-team_file = sys.argv[1] if teams_csv_flag else user_info.work_dir + "/teams.csv"
-teams_raw = list(csv.reader(open(team_file, "r")))
-
-team_categories = teams_raw[0]
-teams_objectified = [list_objectify(x, team_categories, team_file) for x in teams_raw[1:]]
 
 def integrate_team(team):
     team["orgid"] = int(team["orgid"])
     team["teamid"] = int(team["teamid"])
     return team
 
-teams = [integrate_team(x) for x in teams_objectified]
+def get_teams(month, individual_team_count):
+    # build team csv if it was not passed in
+    if not teams_csv_flag:
+        # grab data from the website
+        grab_csv("teams", month, user_info.dl_dir, user_info.work_dir, user_info.hmmt_user, user_info.hmmt_pass)
+        grab_csv("orgs", month, user_info.dl_dir, user_info.work_dir, user_info.hmmt_user, user_info.hmmt_pass)
+
+        # collect organizations into an object for building
+        organizations_for_building = {}
+        for organization in list(csv.reader(open(user_info.work_dir + "/orgs.csv", "r")))[1:]:
+            organizations_for_building[organization[0]] = organization[1]
+
+        # build team csv
+        team_list = [["orgid", "orgname", "teamid", "teamname", "shortname"]]
+        for team in list(csv.reader(open(user_info.work_dir + "/teams_"+ month + ".csv", "r")))[1:]:
+            team_list.append([
+                team[4], # organization
+                organizations_for_building[team[4]],
+                team[1], # number
+                team[2], # name
+                team[3], # shortname
+            ])
+
+        with open(user_info.work_dir + "/teams.csv", "w") as file:
+            writer = csv.writer(file)
+            writer.writerows(team_list)
+
+        # cleanup
+        os.remove(user_info.work_dir + "/orgs.csv")
+        os.remove(user_info.work_dir + "/teams_" + month + ".csv")
+
+    # minimum required columns: [orgid, orgname, teamid, teamname, shortname]
+    team_file = sys.argv[1] if teams_csv_flag else user_info.work_dir + "/teams.csv"
+    teams_raw = list(csv.reader(open(team_file, "r")))
+
+    team_categories = teams_raw[0]
+    teams_objectified = [list_objectify(x, team_categories, team_file) for x in teams_raw[1:]]
+
+    return [integrate_team(x) for x in teams_objectified]
 
 
 ###############################
@@ -278,6 +282,13 @@ def room_list_to_building_object(room_list):
 ########
 
 if __name__ == '__main__':
+    check_number_of_arguments()
+
+    month = get_month()
+    individual_team_count = get_individual_team_count()
+    teams = get_teams(month, individual_team_count)
+    rooms = get_rooms()
+
     # set up more useful versions of the data passed in
     organizations = team_list_to_org_list(teams)
     buildings = room_list_to_building_object(rooms)
