@@ -21,18 +21,22 @@ import os
 import shutil
 from time import sleep
 from selenium import webdriver
-from datetime import datetime
+
+sys.path.append("..")
+from user import UserInfo
+
+sys.path.append("../grab_data")
+from grab_data import grab_csv
 
 
 ###########
 # Globals #
 ###########
 
+user_info = UserInfo()
+
 # flag to determine whether the user passed in a teams csv
 teams_csv_flag = 0
-
-# where files such as the downloads are sent, as where as where final csv files are stored
-work_directory = "/Users/Nacho/Desktop/HMMT/2017-2018/hmmt-projects/assign_rooms/"
 
 room_assignment_headers = ["orgid", "orgname", "teamid", "teamname", "shortname", "indbuilding", "indroom",
                            "teambuilding", "teamroom", "gutsbuilding", "gutsroom", "awardsbuilding", "awardsroom"]
@@ -62,120 +66,18 @@ def list_objectify(list, categories, file):
 
 # we can pass in two or three arguments: the team csv is optional, and the rooms csv and the
 #   number of individual teams are required
-if len(sys.argv) != 3 and len(sys.argv) != 4:
-    print("Usage 1: assign_rooms.py [rooms .csv file] [number of individual teams]")
-    print("Usage 2: assign_rooms.py [teams .csv file] [rooms .csv file] [number of individual teams]")
+if len(sys.argv) != 4 and len(sys.argv) != 5:
+    print("Usage 1: assign_rooms.py [rooms .csv file] [month] [number of individual teams]")
+    print("Usage 2: assign_rooms.py [teams .csv file] [rooms .csv file] [month] [number of individual teams]")
     sys.exit()
 
-if len(sys.argv) == 4:
+if len(sys.argv) == 5:
     teams_csv_flag = 1
-
-
-#########################
-# CSVs From Our Website #
-#########################
-
-def grab_csv(type):
-    if type != "teams" and type != "orgs":
-        raise ValueError("We only want the teams array or the organizations array.")
-
-    driver = webdriver.Chrome()
-    driver.get("http://www.hmmt.co/admin/login/")
-
-    if driver.current_url == "http://www.hmmt.co/admin/login/":
-        username = driver.find_element_by_id("id_username")
-        username.send_keys("YOUR USERNAME HERE")
-        password = driver.find_element_by_id("id_password")
-        password.send_keys("YOUR PASSWORD HERE")
-        driver.find_element_by_xpath("//input[@type='submit']").click()
-
-        # give the browser some time to load
-        sleep(0.25)
-
-        if driver.current_url == "http://www.hmmt.co/admin/login/":
-            raise RuntimeError("Bad username and/or password.")
-        
-
-    if type == "teams":
-        driver.get("http://www.hmmt.co/admin/registration/team/export/?accepted__exact=1&month__exact=nov")
-    else:
-        driver.get("http://www.hmmt.co/admin/registration/organization/export/?")
-
-    file_format = driver.find_element_by_id("id_file_format")
-    file_options = file_format.find_elements_by_tag_name("option")
-    for option in file_options:
-        if option.get_attribute("value") == "0":
-            option.click()
-            break
-    driver.find_element_by_xpath("//input[@type='submit']").click()
-
-    # increase as needed if the downloads still fail
-    sleep(0.5)
-
-    download_directory = "/Users/Nacho/Downloads"
-    download_destination = work_directory + type + "_download.csv"
-    download_name = max([download_directory + "/" + f for f in os.listdir(download_directory)], key=os.path.getctime)
-    shutil.move(download_name, download_destination)
-
-    driver.close()
-
-if not teams_csv_flag:
-    grab_csv("teams")
-    grab_csv("orgs")
-
-
-##################
-# Build Team CSV #
-##################
-
-if not teams_csv_flag:
-    # collect organizations into an object for building
-    organizations_for_building = {}
-    for organization in list(csv.reader(open(work_directory + "orgs_download.csv", "r")))[1:]:
-        organizations_for_building[organization[0]] = organization[1]
-
-    # build team csv
-    team_list = [["orgid", "orgname", "teamid", "teamname", "shortname"]]
-    for team in list(csv.reader(open(work_directory + "teams_download.csv", "r")))[1:]:
-        team_list.append([
-            team[4], # organization
-            organizations_for_building[team[4]],
-            team[1], # number
-            team[2], # name
-            team[3], # shortname
-        ])
-
-    with open(work_directory + "teams.csv", "w") as file:
-        writer = csv.writer(file)
-        writer.writerows(team_list)
-
-    # cleanup
-    os.remove(work_directory + "orgs_download.csv")
-    os.remove(work_directory + "teams_download.csv")
 
 
 ########
 # Data #
 ########
-
-###########
-## Teams ##
-###########
-
-# minimum required columns: [orgid, orgname, teamid, teamname, shortname]
-teams_raw = list(csv.reader(open(sys.argv[1], "r"))) if teams_csv_flag \
-            else list(csv.reader(open(work_directory + "teams.csv", "r")))
-
-team_categories = teams_raw[0]
-teams_objectified = [list_objectify(x, team_categories, "teams.csv") for x in teams_raw[1:]]
-
-def integrate_team(team):
-    team["orgid"] = int(team["orgid"])
-    team["teamid"] = int(team["teamid"])
-    return team
-
-teams = [integrate_team(x) for x in teams_objectified]
-
 
 ###########
 ## Rooms ##
@@ -198,11 +100,65 @@ def integrate_room(room):
 
 rooms = [integrate_room(x) for x in rooms_objectified]
 
+###########
+## Month ##
+###########
+
+month = sys.argv[3] if teams_csv_flag else sys.argv[2]
+
 ################################
 ## Number of Individual Teams ##
 ################################
 
-individual_team_count = int(sys.argv[3]) if teams_csv_flag else int(sys.argv[2])
+individual_team_count = int(sys.argv[4]) if teams_csv_flag else int(sys.argv[3])
+
+###########
+## Teams ##
+###########
+
+# build team csv if it was not passed in
+if not teams_csv_flag:
+    # grab data from the website
+    grab_csv("teams", month, user_info.dl_dir, user_info.work_dir, user_info.hmmt_user, user_info.hmmt_pass)
+    grab_csv("orgs", month, user_info.dl_dir, user_info.work_dir, user_info.hmmt_user, user_info.hmmt_pass)
+
+    # collect organizations into an object for building
+    organizations_for_building = {}
+    for organization in list(csv.reader(open(user_info.work_dir + "/orgs.csv", "r")))[1:]:
+        organizations_for_building[organization[0]] = organization[1]
+
+    # build team csv
+    team_list = [["orgid", "orgname", "teamid", "teamname", "shortname"]]
+    for team in list(csv.reader(open(user_info.work_dir + "/teams_"+ month + ".csv", "r")))[1:]:
+        team_list.append([
+            team[4], # organization
+            organizations_for_building[team[4]],
+            team[1], # number
+            team[2], # name
+            team[3], # shortname
+        ])
+
+    with open(user_info.work_dir + "/teams.csv", "w") as file:
+        writer = csv.writer(file)
+        writer.writerows(team_list)
+
+    # cleanup
+    os.remove(user_info.work_dir + "/orgs.csv")
+    os.remove(user_info.work_dir + "/teams_" + month + ".csv")
+
+# minimum required columns: [orgid, orgname, teamid, teamname, shortname]
+team_file = sys.argv[1] if teams_csv_flag else user_info.work_dir + "/teams.csv"
+teams_raw = list(csv.reader(open(team_file, "r")))
+
+team_categories = teams_raw[0]
+teams_objectified = [list_objectify(x, team_categories, team_file) for x in teams_raw[1:]]
+
+def integrate_team(team):
+    team["orgid"] = int(team["orgid"])
+    team["teamid"] = int(team["teamid"])
+    return team
+
+teams = [integrate_team(x) for x in teams_objectified]
 
 
 ###############################
@@ -460,7 +416,7 @@ if __name__ == '__main__':
         return assignment[4] # shortname
     room_assignment_list = sorted(room_assignment_list, key=room_assignment_key)
 
-    with open(work_directory + "room_assignment_output.csv", "w") as file:
+    with open(user_info.work_dir + "/room_assignment_output.csv", "w") as file:
         writer = csv.writer(file)
         writer.writerow(room_assignment_headers)
         writer.writerows(room_assignment_list)

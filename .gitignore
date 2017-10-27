@@ -2,3 +2,4 @@
 *.tex
 *.csv
 .DS_Store
+*.pyc

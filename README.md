@@ -5,4 +5,4 @@ This is a place where all the software I write for the tournament will live. As 
 ## Required Packages
 
 * `personalized_schedules`: `pylatex`
-* `assign_rooms`: `selenium` (which itself requires a driver)
+* `assign_rooms`: `selenium` (which itself requires a driver: current assumption is that the user has Google Chrome)
