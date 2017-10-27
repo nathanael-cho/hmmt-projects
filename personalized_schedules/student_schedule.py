@@ -4,7 +4,6 @@
 
 import csv
 import sys
-import os
 from pylatex import Document, NewPage, LineBreak, LongTabu, LargeText, \
     SmallText, MultiColumn, TextColor, Command, Package, MiniPage, Center
 from pylatex.utils import bold, NoEscape

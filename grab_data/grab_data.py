@@ -11,7 +11,8 @@ from selenium import webdriver
 # Functions #
 #############
 
-def grab_csv(type, month, dl_dir, dest_dir, hmmt_user, hmmt_pass):
+# no dest_dir => move the file to the current directory
+def grab_csv(type, month, hmmt_user, hmmt_pass, dl_dir, dest_dir=None):
     if not type in ["indivs", "teams", "orgs"]:
         raise ValueError("The type must be 'teams' or 'orgs' or 'indivs'.")
 
@@ -55,7 +56,7 @@ def grab_csv(type, month, dl_dir, dest_dir, hmmt_user, hmmt_pass):
     sleep(0.5)
 
     dl_file = max([dl_dir + "/" + f for f in os.listdir(dl_dir)], key=os.path.getctime)
-    dest_file = dest_dir + "/" + type + ("" if type == "orgs" else "_" + month) + ".csv"
+    dest_file = (dest_dir + "/" if dest_dir else "") + type + ("" if type == "orgs" else "_" + month) + ".csv"
     shutil.move(dl_file, dest_file)
 
     driver.close()

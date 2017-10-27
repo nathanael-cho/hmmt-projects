@@ -18,9 +18,6 @@
 import csv
 import sys
 import os
-import shutil
-from time import sleep
-from selenium import webdriver
 
 sys.path.append("..")
 from user import UserInfo
@@ -128,8 +125,8 @@ def get_teams(month, individual_team_count):
     # build team csv if it was not passed in
     if not teams_csv_flag:
         # grab data from the website
-        grab_csv("teams", month, user_info.dl_dir, user_info.work_dir, user_info.hmmt_user, user_info.hmmt_pass)
-        grab_csv("orgs", month, user_info.dl_dir, user_info.work_dir, user_info.hmmt_user, user_info.hmmt_pass)
+        grab_csv("teams", month, user_info.hmmt_user, user_info.hmmt_pass, user_info.dl_dir, user_info.work_dir)
+        grab_csv("orgs", month, user_info.hmmt_user, user_info.hmmt_pass, user_info.dl_dir, user_info.work_dir)
 
         # collect organizations into an object for building
         organizations_for_building = {}
