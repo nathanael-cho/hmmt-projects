@@ -449,14 +449,18 @@ if __name__ == '__main__':
                 break
 
     # generate new csv
-    room_assignment_list = [room_assignment_headers]
+    room_assignment_list = []
     for org in organizations:
         for team in org["teams"]:
             room_assignment_list.append(
                 [team[x] for x in room_assignment_headers[:team_org_split]] + \
                 [org[x] for x in room_assignment_headers[team_org_split:]]
             )
+    def room_assignment_key(assignment):
+        return assignment[4] # shortname
+    room_assignment_list = sorted(room_assignment_list, key=room_assignment_key)
 
     with open(work_directory + "room_assignment_output.csv", "w") as file:
         writer = csv.writer(file)
+        writer.writerow(room_assignment_headers)
         writer.writerows(room_assignment_list)
