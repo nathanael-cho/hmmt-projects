@@ -62,11 +62,7 @@ def get_room_assignments():
 
     # minimum required columns: [orgid, orgname, teamid, teamname, shortname, indbuilding, indroom,
     #   teambuilding, teamroom, gutsbuilding, gutsroom, awardsbuilding, awardsroom]
-    room_assignments_raw = list(csv.reader(open(assignment_file, "r")))
-
-    headers = room_assignments_raw[0]
-    room_assignments = [assignment_objectify(x, headers) for x in room_assignments_raw[1:]]
-
+    room_assignments = list(csv.DictReader(open(assignment_file, "r")))
     return sorted(room_assignments, key=assignment_key)
 
 ###############
