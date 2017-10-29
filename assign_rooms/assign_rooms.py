@@ -162,12 +162,15 @@ def integrate_room(room):
     room["awardscap"] = int(room["awardscap"])
     return room
 
+def room_key(room):
+    return -room["indcap"]
+
 def get_rooms():
     rooms_file = passed_in["rooms"] if passed_in["rooms"] else default["rooms"]
 
     # minimum required columns: [building, number, indcap, teamcap, gutscap, awardscap]
     with open(rooms_file, "r") as file:
-        return sorted([integrate_room(x) for x in list(csv.DictReader(file))], key=itemgetter("indcap"))
+        return sorted([integrate_room(x) for x in list(csv.DictReader(file))], key=room_key)
 
 ##################
 ## Organization ##
@@ -197,7 +200,7 @@ def get_powerindices():
     pi_object = {}
     pi_list = list(csv.DictReader(open(pi_file, "r")))
     for pi in pi_list:
-        pi_object[pi["orgid"]] = pi["powerindex"]
+        pi_object[int(pi["orgid"])] = int(pi["powerindex"])
     return pi_object
 
 ###########
@@ -277,6 +280,15 @@ def organization_key(org):
         return -10 # 10 is sufficiently larger the maximum number of teams an organization can have
     return -len(org["teams"])
 
+def individual_team(index):
+    return {
+        "orgid": None,
+        "orgname": "Individuals",
+        "teamid": None,
+        "teamname": "Individual " + str(index + 1),
+        "shortname": "Individual " + str(index + 1)
+    }
+
 def team_list_to_org_list(team_list):
     teams_sorted = sorted(team_list, key=itemgetter("orgid", "teamid"))
 
@@ -309,10 +321,7 @@ def team_list_to_org_list(team_list):
 
     # add individual team "organization" to the list
     #     we will try to keep the individual teams together
-    individual_teams = [
-        {"orgid": None, "orgname": "Individuals", "teamid": None, "teamname": "Individual " + str(x + 1), \
-         "shortname": "Individual " + str(x + 1)} for x in range(indiv_team_count)
-    ]
+    individual_teams = [individual_team(x) for x in range(indiv_team_count)]
     organizations.append({
         "orgid": None,
         "orgname": "Individuals",
@@ -339,7 +348,8 @@ def augment_room_object(room):
     room["awardsassigned"] = 0
     return room
 
-# the difference here from the organizations is that we cared about an ordering on organizations
+# the difference here from the organizations is that we cared about an
+#   ordering on organizations
 def room_list_to_building_object(room_list):
     rooms_augmented = [augment_room_object(x) for x in room_list]
 
@@ -347,7 +357,7 @@ def room_list_to_building_object(room_list):
     for room in rooms_augmented:
         room_key = room["building"] + " " + room["number"]
         if room["building"] in buildings:
-            building = buildings[room["building"]] # this is a pass by reference: why python, why?
+            building = buildings[room["building"]]
             building["rooms"][room_key] = room
             building["indcap"] += room["indcap"]
             building["teamcap"] += room["teamcap"]
@@ -378,7 +388,9 @@ if __name__ == '__main__':
     month = get_month()
     indiv_team_count = get_indiv_team_count()
     teams = get_teams(month, indiv_team_count)
-    rooms = get_rooms() # starts off sorted by individual capacity in decreasing order
+
+    # starts off sorted by individual capacity in decreasing order
+    rooms = get_rooms()
 
     # put teams and rooms into their larger groups
     organizations = team_list_to_org_list(teams)
@@ -388,18 +400,20 @@ if __name__ == '__main__':
     indiv_org = organizations[0]
 
     if indiv_org["orgname"] != "Individuals":
-        raise RuntimeError("Individuals was not put at the head of the organizations list.")
+        raise RuntimeError("The organizations list does not start with Individuals.")
 
     indiv_room_parsed = get_indiv_team_room().split("^")
     indiv_room_key = indiv_room_parsed[0] + " " + indiv_room_parsed[1]
-    indiv_room = buildings[indiv_room_parsed[0]]["rooms"][indiv_room_key]
+
+    indiv_building = buildings[indiv_room_parsed[0]]
+    indiv_room = indiv_building["rooms"][indiv_room_key]
     if indiv_room["indcap"] < indiv_team_count or indiv_room["teamcap"] < indiv_team_count:
-        raise ValueError("The room entered is not big enough to hold all the individual teams.")
+        raise ValueError("The room cannot hold all the individual teams.")
 
     indiv_room["indassigned"] += indiv_team_count
     indiv_room["teamassigned"] += indiv_team_count
-    buildings[indiv_room["building"]]["indassigned"] += indiv_team_count
-    buildings[indiv_room["building"]]["teamassigned"] += indiv_team_count
+    indiv_building["indassigned"] += indiv_team_count
+    indiv_building["teamassigned"] += indiv_team_count
     indiv_org["indbuilding"] = indiv_room_parsed[0]
     indiv_org["indroom"] = indiv_room_parsed[1]
     indiv_org["teamrooms"].append(indiv_room_key)
@@ -409,22 +423,23 @@ if __name__ == '__main__':
         team["teamroom"] = indiv_room_parsed[1]
             
 
-    # assign individual buildings, and assign a single team per organization to that room
-    #   if it is also a team room
+    # assign individual buildings, and assign a single team per organization
+    #   to that room if it is also a team room
     for org in organizations[1:]:
         for room in rooms:
             room_key = room["building"] + " " + room["number"]
             building = buildings[room["building"]]
-            room_in_building = building["rooms"][room_key]
+            # modify the room within the buildings object
+            room_actual = building["rooms"][room_key]
 
-            if len(org["teams"]) <= room_in_building["indcap"] - room_in_building["indassigned"]:
-                room_in_building["indassigned"] += org["number_of_teams"]
+            if len(org["teams"]) <= room_actual["indcap"] - room_actual["indassigned"]:
+                room_actual["indassigned"] += org["number_of_teams"]
                 building["indassigned"] += org["number_of_teams"] # just for bookkeeping
                 org["indbuilding"] = room["building"]
                 org["indroom"] = room["number"]
 
-                if room_in_building["teamcap"] > room_in_building["teamassigned"]:
-                    room_in_building["teamassigned"] += 1
+                if room_actual["teamcap"] > room_actual["teamassigned"]:
+                    room_actual["teamassigned"] += 1
                     building["teamassigned"] += 1
                     org["teams"][0]["teambuilding"] = room["building"]
                     org["teams"][0]["teamroom"] = room["number"]
@@ -461,9 +476,10 @@ if __name__ == '__main__':
 
             for room in rooms:
                 room_key = room["building"] + " " + room["number"]
-                room_in_building = buildings[room["building"]]["rooms"][room_key]
-                if room_in_building["teamcap"] > room_in_building["teamassigned"] and not room_key in org["teamrooms"]:
-                    room_in_building["teamassigned"] += 1
+                # modify the room within the buildings object
+                room_actual = buildings[room["building"]]["rooms"][room_key]
+                if room_actual["teamcap"] > room_actual["teamassigned"] and (not room_key in org["teamrooms"]):
+                    room_actual["teamassigned"] += 1
                     org["teamrooms"].append(room_key)
                     team["teambuilding"] = room["building"]
                     team["teamroom"] = room["number"]
@@ -474,7 +490,9 @@ if __name__ == '__main__':
     award_stride_limit = len(awards_rooms)
 
     # arrange teams by powerindex, then by size
-    organizations = sorted(organizations, key=itemgetter("powerindex", "number_of_teams"))
+    def awards_key(room):
+        return(room["powerindex"], -room["number_of_teams"])
+    organizations = sorted(organizations, key=awards_key)
 
     # assign awards rooms
     award_stride = 0
@@ -490,17 +508,20 @@ if __name__ == '__main__':
                 break
             awards_room_index = (awards_room_index + 1) % award_stride_limit
             if (awards_room_index == awards_room_original_index):
-                raise RuntimeError("Not able to assign the organization " + org["orgname"])
+                raise RuntimeError("Not able to assign the organization " + \
+                                   org["orgname"] + " to an awards room.")
         award_stride = (award_stride + 1) % award_stride_limit
 
     # collect guts rooms
     guts_rooms = [x for x in rooms if x["gutscap"] > 0]
 
-    # first pass to ensure that most of the teams in a guts room that becomes an awards room stay there
+    # first pass to ensure that most (if not all) of the teams in a guts room
+    #   that becomes an awards room stay there
     stride = 0
     for org in organizations:
         for room in guts_rooms:
-            if room["building"] == org["awardsbuilding"] and room["number"] == org["awardsroom"] and \
+            if room["building"] == org["awardsbuilding"] and \
+               room["number"] == org["awardsroom"] and \
                room["gutscap"] - room["gutsassigned"] >= org["number_of_teams"]:
                 org["gutsbuilding"] = room["building"]
                 org["gutsroom"] = room["number"]
