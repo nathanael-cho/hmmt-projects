@@ -200,8 +200,22 @@ def get_powerindices():
     pi_object = {}
     pi_list = list(csv.DictReader(open(pi_file, "r")))
     for pi in pi_list:
-        pi_object[int(pi["orgid"])] = int(pi["powerindex"])
+        pi_object[int(pi["orgid"])] = {
+            "index": int(pi["powerindex"]),
+            "teamids": [int(x) for x in pi["teamids"].split("^")]
+        }
     return pi_object
+
+# checks if a team with a power index has already been assigned to a (team) room
+def power_present(teams):
+    for team in teams:
+        if "powerindex" in team:
+            return True
+    return False
+
+# checks whether a team with a power index can be placed in a given room
+def power_possible(team, list):
+    return not "powerindex" in team or not power_present(list)
 
 ###########
 ## Month ##
@@ -253,12 +267,13 @@ def get_teams(month, indiv_team_count):
                 team["shortname"]
             ])
 
+        # cleanup old teams file
+        os.remove(user_info.work_dir + "/teams_" + month + ".csv")
+
+        # this seems redundant, but this is to have a copy in csv form
         with open(user_info.work_dir + "/teams.csv", "w") as file:
             writer = csv.writer(file)
             writer.writerows(team_list)
-
-        # cleanup old teams file
-        os.remove(user_info.work_dir + "/teams_" + month + ".csv")
 
         with open(user_info.work_dir + "/teams.csv", "r") as file:
             return [integrate_team(x) for x in list(csv.DictReader(file))]
@@ -277,8 +292,10 @@ def get_teams(month, indiv_team_count):
 def organization_key(org):
     # we want to sort in decreasing order, putting individuals at the head
     if org["orgname"] == "Individuals":
-        return -10 # 10 is sufficiently larger the maximum number of teams an organization can have
-    return -len(org["teams"])
+        # all other power indices are >= 1, and 10  is sufficiently larger than
+        #   the maximum number of teams an organization can have
+        return (0, -10)
+    return (org["powerindex"], -len(org["teams"]))
 
 def individual_team(index):
     return {
@@ -301,7 +318,12 @@ def team_list_to_org_list(team_list):
         team = teams_sorted[index]
         org_teams.append(team)
         if index == len(teams_sorted) - 1 or team["orgid"] != teams_sorted[index + 1]["orgid"]:
-            powerindex = powerindices[team["orgid"]] if team["orgid"] in powerindices else 100
+            powerindex = powerindices[team["orgid"]]["index"] if team["orgid"] in powerindices else 100
+            if powerindex < 100:
+                for org_team in org_teams:
+                    if org_team["teamid"] in powerindices[team["orgid"]]["teamids"]:
+                        org_team["powerindex"] = powerindex
+
             organizations.append({
                 "orgid": team["orgid"],
                 "orgname": team["orgname"],
@@ -344,6 +366,7 @@ def team_list_to_org_list(team_list):
 def augment_room_object(room):
     room["indassigned"] = 0
     room["teamassigned"] = 0
+    room["teamroundteams"] = []
     room["gutsassigned"] = 0
     room["awardsassigned"] = 0
     return room
@@ -426,24 +449,29 @@ if __name__ == '__main__':
     # assign individual buildings, and assign a single team per organization
     #   to that room if it is also a team room
     for org in organizations[1:]:
-        for room in rooms:
-            room_key = room["building"] + " " + room["number"]
-            building = buildings[room["building"]]
-            # modify the room within the buildings object
-            room_actual = building["rooms"][room_key]
+        # all modifications will happen to the rooms within the buildings object
+        for room_facade in rooms:
+            room_key = room_facade["building"] + " " + room_facade["number"]
+            building = buildings[room_facade["building"]]
+            room = building["rooms"][room_key]
 
-            if len(org["teams"]) <= room_actual["indcap"] - room_actual["indassigned"]:
-                room_actual["indassigned"] += org["number_of_teams"]
+            if len(org["teams"]) <= room["indcap"] - room["indassigned"]:
+                room["indassigned"] += org["number_of_teams"]
                 building["indassigned"] += org["number_of_teams"] # just for bookkeeping
                 org["indbuilding"] = room["building"]
                 org["indroom"] = room["number"]
 
-                if room_actual["teamcap"] > room_actual["teamassigned"]:
-                    room_actual["teamassigned"] += 1
-                    building["teamassigned"] += 1
-                    org["teams"][0]["teambuilding"] = room["building"]
-                    org["teams"][0]["teamroom"] = room["number"]
-                    org["teamrooms"].append(room_key)
+                if room["teamcap"] > room["teamassigned"]:
+                    for team in org["teams"]:
+                        if power_possible(team, room["teamroundteams"]):
+                            room["teamassigned"] += 1
+                            building["teamassigned"] += 1 # mostly for bookkeeping
+                            room["teamroundteams"].append(team)
+
+                            team["teambuilding"] = room["building"]
+                            team["teamroom"] = room["number"]
+                            org["teamrooms"].append(room_key)
+                            break
                 break
 
     # first pass to keep as many teams as possible in the same building
@@ -451,19 +479,24 @@ if __name__ == '__main__':
         if len(org["teamrooms"]) == org["number_of_teams"]:
             continue
 
-        rooms_in_building = buildings[org["indbuilding"]]["rooms"]
+        building = buildings[org["indbuilding"]]
+        rooms_in_building = building["rooms"]
         for room_key in rooms_in_building:
             if len(org["teamrooms"]) == org["number_of_teams"]:
                 break
 
             room = rooms_in_building[room_key]
-            if room["teamcap"] > room["teamassigned"] and (not room_key in org["teamrooms"]):
-                room["teamassigned"] += 1
-                org["teamrooms"].append(room_key)
-                
-                team = next(x for x in org["teams"] if not "teambuilding" in x)
-                team["teambuilding"] = room["building"]
-                team["teamroom"] = room["number"]
+            if room["teamcap"] > room["teamassigned"] and not room_key in org["teamrooms"]:
+                for team in org["teams"]:
+                    if not "teambuilding" in team and power_possible(team, room["teamroundteams"]):
+                        room["teamassigned"] += 1
+                        building["teamassigned"] += 1
+                        room["teamroundteams"].append(team)
+
+                        team["teambuilding"] = room["building"]
+                        team["teamroom"] = room["number"]
+                        org["teamrooms"].append(room_key)
+                        break
 
     # assign the rest of the team buildings
     for org in organizations[1:]:
@@ -474,12 +507,16 @@ if __name__ == '__main__':
             if "teambuilding" in team:
                 continue
 
-            for room in rooms:
-                room_key = room["building"] + " " + room["number"]
-                # modify the room within the buildings object
-                room_actual = buildings[room["building"]]["rooms"][room_key]
-                if room_actual["teamcap"] > room_actual["teamassigned"] and (not room_key in org["teamrooms"]):
-                    room_actual["teamassigned"] += 1
+            for room_facade in rooms:
+                room_key = room_facade["building"] + " " + room_facade["number"]
+                building = buildings[room_facade["building"]]
+                room = building["rooms"][room_key]
+                if room["teamcap"] > room["teamassigned"] and \
+                   (not room_key in org["teamrooms"]) and power_possible(team, room["teamroundteams"]):
+                    room["teamassigned"] += 1
+                    building["teamassigned"] += 1
+                    room["teamroundteams"].append(team)
+
                     org["teamrooms"].append(room_key)
                     team["teambuilding"] = room["building"]
                     team["teamroom"] = room["number"]

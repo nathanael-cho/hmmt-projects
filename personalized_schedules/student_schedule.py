@@ -80,13 +80,12 @@ friday_schedule = [
 # the "Varies" entry is just a placeholder for readability
 saturday_schedule = [
     ["8:00AM", "9:00AM", "Breakfast", "Science Center Lobby"],
-    ["8:00AM", "9:00AM", "Breakfast", "Science Center Lobby"],
     ["9:00AM", "10:15AM", "Individual Round", "Varies"],
     ["10:30AM", "11:45AM", "Theme Round", "Varies"],
     ["12:00PM", "1:00PM", "Team Round", "Varies"],
     ["1:00PM", "2:30PM", "Lunch", "On your own*"],
     ["2:30PM", "4:15PM", "Guts Round", "Varies"],
-    ["4:30PM", "6:00PM", "Award Ceremony", "Varies"]
+    ["4:45PM", "5:30PM", "Award Ceremony", "Varies"]
 ]
 
 ###########################
