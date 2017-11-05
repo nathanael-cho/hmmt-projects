@@ -1,6 +1,6 @@
-###########################################
-# Some High Level Assumptions and Details #
-###########################################
+###########################
+# Some High Level Details #
+###########################
 
 # Organizations are guaranteed to have all their teams in the same room for the individual rounds,
 #   guts round and award ceremony. Organizations will have all their teams in different rooms
@@ -8,12 +8,25 @@
 
 # There are always enough enough organizations with only one or two teams
 
+# If a room is used for guts and awards, the room capacity is higher for awards.
+
+# If a room is used for individual and team, the room capacity is higher for individual.
+
+# An organization's power index is the place of the top finishing team for that organization
+#   last year if that team finished in the top 25, and 100 otherwise.
+
+
+###############################
+# Some High Level Assumptions #
+###############################
+
+# There are always enough enough organizations with only one or two teams
+
 # If a room is used for guts and awards, the room capacity is strictly higher for awards.
 
 # If a room is used for individual and team, the room capacity is strictly higher for individual.
 
-# The power index is the place of the top finishing team for the organization last year if that team
-#   finished in the top 25, and 100 otherwise.
+# We have already made the ad hoc organization for teams of individuals.
 
 
 #########################
@@ -26,11 +39,12 @@
 # ROOM_CSV: it must have the headers [building, number, indcap, teamcap, gutscap, awardscap].
 #   The number does not necessarily have to be a number (e.g. Science Center *A*).
 
-# ORGANIZATION_CSV: it must have the headers [id, name]. If the name is instead GRAB, the program
-#   will get the most recent team data from the website.
+# ORGANIZATION_CSV: it must have the headers [id, name].
+#   If the name is instead GRAB, the program will get the most recent team data from the website.
 
-# POWERINDEX_CSV: it must have the headers [orgid, powerindex]. See above for an explanation of
-#   what the power index is.
+# POWERINDEX_CSV: it must have the headers [orgid, powerindex, teamids].
+#   See above for an explanation of what the power index is.
+#   The teamids must be delimited by a "^", e.g. "1^2^3".
 
 # MONTH: it must be either "nov" or "feb".
 
@@ -72,7 +86,6 @@ default = {
     "powerindices": "powerindices.csv",
     "rooms": "rooms.csv",
     "month": "nov",
-    "indiv_team_count": 4,
     "indiv_room": "SC^A"
 }
 
@@ -82,9 +95,10 @@ passed_in = {
     "powerindices": None,
     "rooms": None,
     "month": None,
-    "indiv_team_count": None,
     "indiv_room": None
 }
+
+individual_org_name = "Individuals"
 
 room_assignment_headers = ["orgid", "orgname", "teamid", "teamname", "shortname", "teambuilding", "teamroom",
                            "indbuilding", "indroom", "gutsbuilding", "gutsroom", "awardsbuilding", "awardsroom"]
@@ -111,7 +125,6 @@ def print_help():
     print("  -o ORGANIZATION_CSV          File containing organization information.")
     print("  -p POWERINDEX_CSV            File containing power indices.")
     print("  -m MONTH                     The month of the tournament.")
-    print("  -n NUMBER_OF_INDIV_TEAMS     The number of individual teams participating.")
     print("  -i INDIV_ROOM                Where individuals will take the morning rounds.")
 
     print("\nThe requirements for the various arguments can be found at the top of `assign_rooms.py`.\n")
@@ -144,8 +157,6 @@ def parse_arguments():
                 raise ValueError("The file " + sys.argv[index + 1] +  " passed in is not valid.")
         elif sys.argv[index] == "-m":
             passed_in["month"] = sys.argv[index + 1]
-        elif sys.argv[index] == "-n":
-            passed_in["indiv_team_count"] = sys.argv[index + 1]
         elif sys.argv[index] == "-i":
             passed_in["indiv_room"] = sys.argv[index + 1]
         else:
@@ -224,13 +235,6 @@ def power_possible(team, list):
 def get_month():
     return passed_in["month"] if passed_in["month"] else default["month"]
 
-###########################
-## Individual Team Count ##
-###########################
-
-def get_indiv_team_count():
-    return passed_in["indiv_team_count"] if passed_in["indiv_team_count"] else default["indiv_team_count"]
-
 ##########################
 ## Individual Team Room ##
 ##########################
@@ -247,7 +251,7 @@ def integrate_team(team):
     team["teamid"] = int(team["teamid"])
     return team
 
-def get_teams(month, indiv_team_count):
+def get_teams(month):
     # build team csv if it was not passed in
     if passed_in["teams"] and passed_in["teams"] == "GRAB":
         # grab data from the website
@@ -291,20 +295,11 @@ def get_teams(month, indiv_team_count):
 # sort organizations by number of teams
 def organization_key(org):
     # we want to sort in decreasing order, putting individuals at the head
-    if org["orgname"] == "Individuals":
+    if org["orgname"] == individual_org_name:
         # all other power indices are >= 1, and 10  is sufficiently larger than
         #   the maximum number of teams an organization can have
         return (0, -10)
     return (org["powerindex"], -len(org["teams"]))
-
-def individual_team(index):
-    return {
-        "orgid": None,
-        "orgname": "Individuals",
-        "teamid": None,
-        "teamname": "Individual " + str(index + 1),
-        "shortname": "Individual " + str(index + 1)
-    }
 
 def team_list_to_org_list(team_list):
     teams_sorted = sorted(team_list, key=itemgetter("orgid", "teamid"))
@@ -340,25 +335,6 @@ def team_list_to_org_list(team_list):
                 "awardsroom": None
             })
             org_teams = []
-
-    # add individual team "organization" to the list
-    #     we will try to keep the individual teams together
-    individual_teams = [individual_team(x) for x in range(indiv_team_count)]
-    organizations.append({
-        "orgid": None,
-        "orgname": "Individuals",
-        "teams": individual_teams,
-        "number_of_teams": indiv_team_count,
-        "powerindex": 100,
-        "indbuilding": None,
-        "indroom": None,
-        "teambuilding": None,
-        "teamrooms": [],
-        "gutsbuilding": None,
-        "gutsroom": None,
-        "awardsbuilding": None,
-        "awardsroom": None
-    })
 
     return sorted(organizations, key=organization_key)
 
@@ -409,8 +385,7 @@ if __name__ == '__main__':
     parse_arguments()
 
     month = get_month()
-    indiv_team_count = get_indiv_team_count()
-    teams = get_teams(month, indiv_team_count)
+    teams = get_teams(month)
 
     # starts off sorted by individual capacity in decreasing order
     rooms = get_rooms()
@@ -421,9 +396,10 @@ if __name__ == '__main__':
 
     # set individual team rooms first
     indiv_org = organizations[0]
+    indiv_team_count = len(indiv_org["teams"])
 
-    if indiv_org["orgname"] != "Individuals":
-        raise RuntimeError("The organizations list does not start with Individuals.")
+    if indiv_org["orgname"] != individual_org_name:
+        raise RuntimeError("The organizations list does not start with the individuals organization.")
 
     indiv_room_parsed = get_indiv_team_room().split("^")
     indiv_room_key = indiv_room_parsed[0] + " " + indiv_room_parsed[1]
