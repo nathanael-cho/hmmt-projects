@@ -6,12 +6,6 @@
 #   guts round and award ceremony. Organizations will have all their teams in different rooms
 #   for the team round.
 
-# There are always enough enough organizations with only one or two teams
-
-# If a room is used for guts and awards, the room capacity is higher for awards.
-
-# If a room is used for individual and team, the room capacity is higher for individual.
-
 # An organization's power index is the place of the top finishing team for that organization
 #   last year if that team finished in the top 25, and 100 otherwise.
 
@@ -20,7 +14,7 @@
 # Some High Level Assumptions #
 ###############################
 
-# There are always enough enough organizations with only one or two teams
+# There are always enough enough organizations with only one or two teams.
 
 # If a room is used for guts and awards, the room capacity is strictly higher for awards.
 
