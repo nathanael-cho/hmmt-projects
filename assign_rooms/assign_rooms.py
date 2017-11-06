@@ -138,7 +138,7 @@ def parse_arguments():
         raise RuntimeError("Every argument must be preceded by a flag. " + \
                            "Use the -h flag to see all arguments/flags.")
 
-    global passed_arguments
+    global passed_in
     for index in range(len(sys.argv))[1::2]:
         if sys.argv[index] == "-t":
             if (not os.path.isfile(sys.argv[index + 1])) and sys.argv[index + 1] != "GRAB":
@@ -149,7 +149,7 @@ def parse_arguments():
                 raise ValueError("The file " + sys.argv[index + 1] +  " passed in is not valid.")
             passed_in["rooms"] = sys.argv[index + 1]
         elif sys.argv[index] == "-o":
-            if not (not os.path.isfile(sys.argv[index + 1])) and sys.argv[index + 1] != "GRAB":
+            if not os.path.isfile(sys.argv[index + 1]) and sys.argv[index + 1] != "GRAB":
                 raise ValueError("The file " + sys.argv[index + 1] +  " passed in is not valid.")
             passed_in["orgs"] = sys.argv[index + 1]
         elif sys.argv[index] == "-p":
@@ -420,7 +420,6 @@ if __name__ == '__main__':
     for team in indiv_org["teams"]:
         team["teambuilding"] = indiv_room_parsed[0]
         team["teamroom"] = indiv_room_parsed[1]
-            
 
     # assign individual buildings, and assign a single team per organization
     #   to that room if it is also a team room
