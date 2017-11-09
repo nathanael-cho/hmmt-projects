@@ -4,6 +4,12 @@ This is a place where all the software I write for the tournament will live. As 
 
 If you are an HMMT officer and would like to use the code here, make sure to fill out `user.py` with the appropriate information!
 
+## General Overview
+
+* `Personalized Schedules`: generates personalized schedules for the teams that come to the tournament. The personalization comes into play with the testing room and awards room locations given on the schedule.
+* `Assign Rooms`: generates room assignments for the teams at the tournament, given various restraints such as room size.
+* `Generate Orders`: generates order slips for teams that pre-order shirts and/or pizzas.
+
 ## Required Packages
 
 * `personalized_schedules`: `pylatex`
