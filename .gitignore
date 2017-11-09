@@ -1,5 +1,8 @@
 *.pdf
 *.tex
+*.txt
+*.aux
+*.log
 *.csv
 .DS_Store
 *.pyc

@@ -1,0 +1,43 @@
+% also largely taken from the label generation Python script/LaTeX
+%   written by Calvin Deng, Harvard Class of 2017
+
+\documentclass[letterpaper,10pt]{article}
+\usepackage[absolute]{textpos}
+\usepackage[skins]{tcolorbox}
+\usepackage{lipsum}
+\usepackage{graphicx}
+\setlength{\TPVertModule}{1in}
+\setlength{\TPHorizModule}{1in}
+\newcommand{\myboxwidth}{3.75}
+\newcommand{\myboxheight}{2}
+
+\newcommand{\mylabel}[4]{
+\begin{textblock}{\myboxwidth}(#1, #2)
+  \noindent
+  \begin{tcolorbox}[left skip=0pt,
+                    width={\dimexpr\myboxwidth in},
+                    boxrule=0.05pt,
+                    nobeforeafter,
+                    enhanced jigsaw,
+                    sharp corners,
+                    height={\dimexpr\myboxheight in},
+                    colback=white,
+                    opacityback=0,
+                    halign=flush left,
+                    valign=center]
+    \large
+    \textbf{#3}\\
+    \small
+    {#4}
+  \end{tcolorbox}
+\end{textblock}}
+
+\newcommand{\myflush}{
+  \newpage\
+}
+
+\begin{document}
+\pagenumbering{gobble}
+\input{shirt_orders.txt}
+\input{pizza_orders.txt}
+\end{document}
