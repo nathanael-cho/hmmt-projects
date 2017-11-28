@@ -6,11 +6,9 @@ If you are an HMMT officer and would like to use the code here, make sure to fil
 
 ## General Overview
 
-* `Personalized Schedules`: generates personalized schedules for the teams that come to the tournament. The personalization comes into play with the testing room and awards room locations given on the schedule.
 * `Assign Rooms`: generates room assignments for the teams at the tournament, given various restraints such as room size.
 * `Generate Orders`: generates order slips for teams that pre-order shirts and/or pizzas.
 
 ## Required Packages
 
-* `personalized_schedules`: `pylatex`
 * `assign_rooms`: `selenium` (which itself requires a driver: the code assumes that the user has Google Chrome/ChromeDriver)
