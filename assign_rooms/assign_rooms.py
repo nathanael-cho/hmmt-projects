@@ -34,7 +34,7 @@
 
 
 # TEAM_CSV: it must have the following headers:
-#   [orgid, orgname, teamid, teamname, shortname].
+#   [orgid, teamid, teamname, shortname].
 
 # ROOM_CSV: it must have the following:
 #   [building, number, indcap, teamcap, gutscap, awardscap].
@@ -86,8 +86,8 @@ default = {
     "orgs": "orgs.csv",
     "powerindices": "powerindices.csv",
     "rooms": "rooms.csv",
-    "month": "nov",
-    "indiv_room": "SC^A"
+    "month": "feb",
+    "indiv_room": "10^250"
 }
 
 passed_in = {
@@ -101,14 +101,14 @@ passed_in = {
 
 individual_org_name = "Individuals"
 
-room_assignment_headers = ["orgid", "orgname", "teamid", "teamname",
-                           "shortname", "teambuilding", "teamroom",
+room_assignment_headers = ["orgid", "teamid", "teamname", "shortname",
+                           "teambuilding", "teamroom", "orgname",
                            "indbuilding", "indroom", "gutsbuilding",
                            "gutsroom", "awardsbuilding", "awardsroom"]
 
 # in relation to room_assignment_headers: get earlier indices from
 # team objects and later indices from organization objects
-team_org_split = 7
+team_org_split = 6
 
 
 ##################
@@ -210,11 +210,11 @@ def get_rooms():
 def orgs_file_to_list(orgs_file):
     organizations = {}
     for organization in list(csv.DictReader(open(orgs_file, "r"))):
-        organizations[organization["id"]] = organization["name"]
+        organizations[int(organization["id"])] = organization["name"]
     return organizations
 
 
-def get_organizations(month):
+def get_organizations():
     orgs_file = passed_in["orgs"] if passed_in["orgs"] else default["orgs"]
     return orgs_file_to_list(orgs_file)
 
@@ -281,7 +281,7 @@ def integrate_team(team):
     return team
 
 
-def get_teams(month):
+def get_teams():
     teams_file = passed_in["teams"] if passed_in["teams"] \
                  else default["teams"]
     with open(teams_file, "r") as file:
@@ -304,6 +304,8 @@ def organization_key(org):
 
 
 def team_list_to_org_list(team_list):
+    orgs_raw = get_organizations()
+
     teams_sorted = sorted(team_list, key=itemgetter("orgid", "teamid"))
 
     powerindices = get_powerindices()
@@ -326,7 +328,7 @@ def team_list_to_org_list(team_list):
 
             organizations.append({
                 "orgid": team["orgid"],
-                "orgname": team["orgname"],
+                "orgname": orgs_raw[team["orgid"]],
                 "teams": org_teams,
                 "number_of_teams": len(org_teams),
                 "powerindex": powerindex,
@@ -392,7 +394,7 @@ if __name__ == '__main__':
     parse_arguments()
 
     month = get_month()
-    teams = get_teams(month)
+    teams = get_teams()
 
     # starts off sorted by individual capacity in decreasing order
     rooms = get_rooms()
