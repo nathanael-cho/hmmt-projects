@@ -2,26 +2,30 @@
 # Credits #
 ###########
 
-# Inspired the label generating python script written by Calvin Deng, Harvard Class of 2017.
-#   In particular, the function `latex_escape` was taken directly from his code.
+# Inspired the label generating python script written by Calvin Deng,
+# Harvard Class of 2017. In particular, the function `latex_escape` was
+# taken directly from his code.
 
 
 ##############
 # High Level #
 ##############
 
-# Generates the text files `shirt_orders.txt` and `pizza_orders.txt`, which are used by the
-#   LaTeX file.
-# The workflow is `python3 generate_orders.py [ORDERS_CSV]` => `pdflatex orders.tex` (or equivalent)
+# Generates the text files `shirt_orders.txt` and `pizza_orders.txt`, which
+# are used by the LaTeX file.
+# The workflow is `python3 generate_orders.py [ORDERS_CSV]` =>
+# `pdflatex orders.tex` (or equivalent).
 
 
 #########################
 # Argument Requirements #
 #########################
 
-# ORGANIZATION_CSV: it must have the headers [orgid, orgname, teamid, teamname, shortname].
+# ORGANIZATION_CSV: it must have the headers:
+#   [orgid, orgname, teamid, teamname, shortname].
 
-# ORDERS_CSV: it must have the headers[orgid, orgname, xs, s, m, l, xl, xxl, cheese, pepperoni]
+# ORDERS_CSV: it must have the headers:
+#   [orgid, orgname, xs, s, m, l, xl, xxl, cheese, pepperoni].
 
 
 ###########
@@ -58,9 +62,11 @@ shirt_orders_per_page = len(shirt_order_yxs)
 # Data Functions #
 ##################
 
+
 #####################
 ## Check Arguments ##
 #####################
+
 
 # Usage: python3 generate_orders.py [ARGUMENTS]
 
@@ -68,11 +74,12 @@ def print_help():
     print("\nUsage: [ARGUMENTS]")
 
     print("\nArgument Options:")
-    print("  -r ORDERS_CSV                 File containing pizza and shirt orders.")
+    print("  -r ORDERS_CSV                 File containing orders.")
 
     print("\nThe requirements for the various arguments can be found")
     print("at the top of `generate_rooms.py`.\n")
     sys.exit()
+
 
 def parse_arguments():
     if len(sys.argv) == 2 and sys.argv[1] == "-h":
@@ -91,9 +98,11 @@ def parse_arguments():
         else:
             raise RuntimeError("You used an invalid flag. Use the -h flag to see all arguments/flags.")
 
+
 ###################
 ## LaTeX Helpers ##
 ###################
+
 
 def latex_escape(s):
     # handle characters that require an escape in LaTeX
@@ -113,15 +122,17 @@ def latex_escape(s):
     s = ''.join(l)
     return s
 
+
 ############
 ## Orders ##
 ############
 
+
 def orders_file_to_object(orders_file):
-    orders = {}
-    for order in list(csv.DictReader(open(orders_file, "r"))):
-        orders[int(order["orgid"])] = order
+    orders = list(csv.DictReader(open(orders_file, "r")))
+    orders.sort(key=lambda o: o['orgname'].lower())
     return orders
+
 
 def shirt_order_string(x, y, order):
     return "\\mylabel{%f}{%f}{%s\\\\%s}{S: %d\\\\M: %d\\\\L: %d\\\\XL: %d\\\\XXL: %d}" % (
@@ -135,6 +146,7 @@ def shirt_order_string(x, y, order):
         int(order["xl"]),
         int(order["xxl"]),
     )
+
 
 def pizza_order_string(x, y, order):
     return "\\mylabel{%f}{%f}{%s\\\\%s}{Cheese: %d\\\\Pepperoni: %d}" % (
@@ -151,24 +163,26 @@ def pizza_order_string(x, y, order):
 # Main #
 ########
 
+
 if __name__ == '__main__':
     parse_arguments()
 
-    orders = orders_file_to_object(passed_in["orders"] if passed_in["orders"] else default["orders"])
+    order_file = passed_in["orders"] if passed_in["orders"] \
+        else default["orders"]
+    orders = orders_file_to_object(order_file)
 
     with open("shirt_orders.txt", "w") as f:
         shirt_page_index = 0
         page_flushed = False
-        for orgid in orders:
-            if shirt_page_index % shirt_orders_per_page == 0 and not page_flushed:
-                print("\\myflush", file = f)
+        for order in orders:
+            if shirt_page_index % shirt_orders_per_page == 0 \
+               and not page_flushed:
+                print("\\myflush", file=f)
                 page_flushed = True
-
-            order = orders[orgid]
 
             if int(order["s"]) + int(order["m"]) + int(order["l"]) + int(order["xl"]) + int(order["xxl"]) > 0:
                 y, x = shirt_order_yxs[shirt_page_index]
-                print(shirt_order_string(x, y, order), file = f)
+                print(shirt_order_string(x, y, order), file=f)
 
                 shirt_page_index = (1 + shirt_page_index) % shirt_orders_per_page
                 page_flushed = False
@@ -176,16 +190,15 @@ if __name__ == '__main__':
     with open("pizza_orders.txt", "w") as f:
         pizza_page_index = 0
         page_flushed = False
-        for orgid in orders:
-            if pizza_page_index % shirt_orders_per_page == 0 and not page_flushed:
-                print("\\myflush", file = f)
+        for order in orders:
+            if pizza_page_index % shirt_orders_per_page == 0 \
+               and not page_flushed:
+                print("\\myflush", file=f)
                 page_flushed = True
-
-            order = orders[orgid]
 
             if int(order["cheese"]) + int(order["pepperoni"]) > 0:
                 y, x = shirt_order_yxs[pizza_page_index]
-                print(pizza_order_string(x, y, order), file = f)
+                print(pizza_order_string(x, y, order), file=f)
 
                 pizza_page_index = (1 + pizza_page_index) % shirt_orders_per_page
                 page_flushed = False
