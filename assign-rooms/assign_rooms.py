@@ -166,6 +166,7 @@ def parse_arguments():
             if not os.path.isfile(sys.argv[index + 1]):
                 raise ValueError("The file " + sys.argv[index + 1] +
                                  " passed in is not valid.")
+            passed_in["powerindices"] = sys.argv[index + 1]
         elif sys.argv[index] == "-m":
             passed_in["month"] = sys.argv[index + 1]
         elif sys.argv[index] == "-i":
@@ -579,5 +580,6 @@ if __name__ == '__main__':
 
     with open(user_info.work_dir + "/room_assignments.csv", "w") as file:
         writer = csv.writer(file)
+        writer.writerow(("Run script:", " ".join(sys.argv)))
         writer.writerow(room_assignment_headers)
         writer.writerows(room_assignment_list)
