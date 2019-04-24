@@ -166,6 +166,7 @@ def parse_arguments():
             if not os.path.isfile(sys.argv[index + 1]):
                 raise ValueError("The file " + sys.argv[index + 1] +
                                  " passed in is not valid.")
+            passed_in["powerindices"] = sys.argv[index + 1]
         elif sys.argv[index] == "-m":
             passed_in["month"] = sys.argv[index + 1]
         elif sys.argv[index] == "-i":
@@ -460,7 +461,60 @@ if __name__ == '__main__':
                             break
                 break
 
-    # first pass to keep as many teams as possible in the same building
+    # first pass to keep as many teams as possible in the same building,
+    # starting with the power teams
+    for org in organizations[1:]:
+        if len(org["teamrooms"]) == org["number_of_teams"]:
+            continue
+
+        building = buildings[org["indbuilding"]]
+        rooms_in_building = building["rooms"]
+        for room_key in rooms_in_building:
+            if len(org["teamrooms"]) == org["number_of_teams"]:
+                break
+
+            room = rooms_in_building[room_key]
+            if room["teamcap"] > room["teamassigned"] and \
+               room_key not in org["teamrooms"]:
+                for team in org["teams"]:
+                    if "teambuilding" not in team and "powerindex" in team and \
+                       power_possible(team, room["teamroundteams"]):
+                        room["teamassigned"] += 1
+                        building["teamassigned"] += 1
+                        room["teamroundteams"].append(team)
+
+                        team["teambuilding"] = room["building"]
+                        team["teamroom"] = room["number"]
+                        org["teamrooms"].append(room_key)
+                        break
+
+    # assign the rest of the team buildings
+    for org in organizations[1:]:
+        if len(org["teamrooms"]) == org["number_of_teams"]:
+            continue
+
+        for team in org["teams"]:
+            if "teambuilding" in team or "powerindex" not in team:
+                continue
+
+            for room_facade in rooms:
+                room_key = room_facade["building"] + " " + \
+                           room_facade["number"]
+                building = buildings[room_facade["building"]]
+                room = building["rooms"][room_key]
+                if room["teamcap"] > room["teamassigned"] and \
+                   (room_key not in org["teamrooms"]) and \
+                   power_possible(team, room["teamroundteams"]):
+                    room["teamassigned"] += 1
+                    building["teamassigned"] += 1
+                    room["teamroundteams"].append(team)
+
+                    org["teamrooms"].append(room_key)
+                    team["teambuilding"] = room["building"]
+                    team["teamroom"] = room["number"]
+                    break
+
+    # now repeat for the non-power teams
     for org in organizations[1:]:
         if len(org["teamrooms"]) == org["number_of_teams"]:
             continue
@@ -485,8 +539,6 @@ if __name__ == '__main__':
                         team["teamroom"] = room["number"]
                         org["teamrooms"].append(room_key)
                         break
-
-    # assign the rest of the team buildings
     for org in organizations[1:]:
         if len(org["teamrooms"]) == org["number_of_teams"]:
             continue
@@ -579,5 +631,6 @@ if __name__ == '__main__':
 
     with open(user_info.work_dir + "/room_assignments.csv", "w") as file:
         writer = csv.writer(file)
+        writer.writerow(("Run script:", " ".join(sys.argv)))
         writer.writerow(room_assignment_headers)
         writer.writerows(room_assignment_list)
